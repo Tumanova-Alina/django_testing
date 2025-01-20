@@ -1,63 +1,50 @@
 from http import HTTPStatus
 from django.contrib.auth import get_user_model
-from django.urls import reverse
 import pytest
-from pytest_django.asserts import assertRedirects
+from pytest_lazyfixture import lazy_fixture
+from yanews.settings import LOGIN_URL
 
 User = get_user_model()
 
-
-@pytest.mark.parametrize(
-    'name, args',
-    (
-        ('news:home', ()),
-        ('news:detail', (pytest.lazy_fixture('id_for_args'))),
-        ('users:login', ()),
-        ('users:logout', ()),
-        ('users:signup', ())
-    )
-)
-# Указываем имя изменяемого параметра в сигнатуре теста.
-def test_pages_availability_for_anonymous_user(client, name, args):
-    url = reverse(name, args=args)  # Получаем ссылку на нужный адрес.
-    response = client.get(url)  # Выполняем запрос.
-    assert response.status_code == HTTPStatus.OK
+HOME_URL = lazy_fixture('home_url')
+DETAIL_URL = lazy_fixture('detail_url')
+EDIT_URL = lazy_fixture('edit_url')
+DELETE_URL = lazy_fixture('delete_url')
+LOGOUT_URL = lazy_fixture('logout_url')
+SIGNUP_URL = lazy_fixture('signup_url')
 
 
 @pytest.mark.parametrize(
-    'parametrized_client, expected_status',
-    # Предварительно оборачиваем имена фикстур
-    # в вызов функции pytest.lazy_fixture().
-    (
-        (pytest.lazy_fixture('not_author_client'), HTTPStatus.NOT_FOUND),
-        (pytest.lazy_fixture('author_client'), HTTPStatus.OK)
-    ),
+    'url, client_fixture, expected_status',
+    [
+        (HOME_URL, 'client', HTTPStatus.OK),
+        (DETAIL_URL, 'client', HTTPStatus.OK),
+        (LOGIN_URL, 'client', HTTPStatus.OK),
+        (LOGOUT_URL, 'client', HTTPStatus.OK),
+        (SIGNUP_URL, 'client', HTTPStatus.OK),
+        (EDIT_URL, 'not_author_client', HTTPStatus.NOT_FOUND),
+        (EDIT_URL, 'author_client', HTTPStatus.OK),
+        (DELETE_URL, 'not_author_client', HTTPStatus.NOT_FOUND),
+        (DELETE_URL, 'author_client', HTTPStatus.OK),
+    ]
 )
-@pytest.mark.parametrize(
-    'name',
-    ('news:edit', 'news:delete'),
-)
-def test_pages_availability_for_different_users(
-        parametrized_client, name, comment, expected_status
-):
-    url = reverse(name, args=(comment.id,))
-    response = parametrized_client.get(url)
+def test_response_status_codes(url, client_fixture,
+                               expected_status, request, client):
+    client = request.getfixturevalue(client_fixture)
+    response = client.get(url)
     assert response.status_code == expected_status
 
 
 @pytest.mark.parametrize(
-    'name, args',
-    (
-        ('news:edit', pytest.lazy_fixture('id_for_args')),
-        ('news:delete', pytest.lazy_fixture('id_for_args'))
-    ),
+    'url_fixture',
+    [
+        EDIT_URL,
+        DELETE_URL,
+    ]
 )
-def test_redirects(client, name, args):
-    login_url = reverse('users:login')
-    # Формируем URL в зависимости от того, передан ли объект заметки:
-    url = reverse(name, args=args)
-    expected_url = f'{login_url}?next={url}'
+def test_redirects(client, url_fixture, request):
+    url = url_fixture
+    expected_url = f"{LOGIN_URL}?next={url}"
     response = client.get(url)
-    # Ожидаем, что со всех проверяемых страниц анонимный клиент
-    # будет перенаправлен на страницу логина:
-    assertRedirects(response, expected_url)
+    assert response.status_code == HTTPStatus.FOUND
+    assert response.url == expected_url

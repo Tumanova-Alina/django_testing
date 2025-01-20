@@ -1,73 +1,69 @@
 from http import HTTPStatus
 
 from django.contrib.auth import get_user_model
-import pytest
 
-from news.forms import WARNING
+from news.forms import WARNING, BAD_WORDS
 from news.models import Comment
+
+
+FORM_DATA = {'text': 'Текст комментария'}
+BAD_WORDS_DATA = {'text': f'Какой-то текст, {BAD_WORDS[0]}, еще текст'}
+NEW_FORM_DATA = {'text': 'Обновлённый комментарий'}
 
 User = get_user_model()
 
 
-def test_anonymous_user_cant_create_comment(client, detail_url, form_data):
-    client.post(detail_url, data=form_data)
+def test_anonymous_user_cant_create_comment(client, detail_url):
+    client.post(detail_url, data=FORM_DATA)
     comments_count = Comment.objects.count()
     assert comments_count == 0
 
 
 def test_authorized_user_can_create_comment(authorized_client, detail_url,
-                                            form_data, news, authorized_user):
-    response = authorized_client.post(detail_url, data=form_data)
-    assert response.status_code == 302
+                                            news, authorized_user):
+    response = authorized_client.post(detail_url, data=FORM_DATA)
+    assert response.status_code == HTTPStatus.FOUND
     assert response.url == f'{detail_url}#comments'
     # Проверяем, что комментарий был добавлен в базу
     comments_count = Comment.objects.count()
     assert comments_count == 1
-    # Получаем созданный комментарий
-    comment = Comment.objects.first()
-    assert comment.text == form_data['text']
+    comment = Comment.objects.get(news=news, author=authorized_user)
+    assert comment.text == FORM_DATA['text']
     assert comment.news == news
     assert comment.author == authorized_user
 
 
-def test_user_cant_use_bad_words(
-        authorized_client, detail_url, bad_words_data):
+def test_user_cant_use_bad_words(detail_url, authorized_client):
     # Отправляем данные с плохими словами.
-    response = authorized_client.post(detail_url, data=bad_words_data)
-    # Проверяем, что форма вернула ошибку.
-    assert response.status_code == 200
+    response = authorized_client.post(detail_url, data=BAD_WORDS_DATA)
+    assert response.status_code == HTTPStatus.OK
     assert 'form' in response.context
     assert response.context['form'].errors['text'] == [WARNING]
     assert Comment.objects.count() == 0
 
 
-@pytest.mark.parametrize(
-    'action, method, client_fixture, expected_status, comment_final_text',
-    [
-        # Тесты на удаление
-        ('delete', 'delete', 'author_client', HTTPStatus.FOUND, None),
-        ('delete', 'delete', 'not_author_client',
-         HTTPStatus.NOT_FOUND, 'Текст комментария'),
-        # Тесты на редактирование
-        ('edit', 'post', 'author_client',
-         HTTPStatus.FOUND, 'Обновлённый комментарий'),
-        ('edit', 'post', 'not_author_client',
-         HTTPStatus.NOT_FOUND, 'Текст комментария')
-    ]
-)
-def test_comment_actions(
-    request, action, method, client_fixture, expected_status, url,
-    new_form_data, comment, comment_final_text
-):
-    client = request.getfixturevalue(client_fixture)
-    if method == 'delete':
-        response = client.delete(url)
-    elif method == 'post':
-        response = client.post(url, data=new_form_data)
-    assert response.status_code == expected_status
-    if comment_final_text is None:
-        with pytest.raises(Comment.DoesNotExist):
-            comment.refresh_from_db()
-    else:
-        comment.refresh_from_db()
-        assert comment.text == comment_final_text
+def test_author_can_delete_comment(author_client, comment, delete_url):
+    response = author_client.delete(delete_url)
+    assert response.status_code == HTTPStatus.FOUND
+    assert Comment.objects.filter(id=comment.id).exists() is False
+
+
+def test_not_author_cant_delete_comment(
+        not_author_client, comment, delete_url):
+    response = not_author_client.delete(delete_url)
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert Comment.objects.filter(id=comment.id).exists() is True
+
+
+def test_author_can_edit_comment(author_client, comment, edit_url):
+    response = author_client.post(edit_url, data=NEW_FORM_DATA)
+    assert response.status_code == HTTPStatus.FOUND
+    comment.refresh_from_db()
+    assert comment.text == NEW_FORM_DATA['text']
+
+
+def test_not_author_cant_edit_comment(not_author_client, comment, edit_url):
+    response = not_author_client.post(edit_url, data=NEW_FORM_DATA)
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    comment.refresh_from_db()
+    assert comment.text != NEW_FORM_DATA['text']
