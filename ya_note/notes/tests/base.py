@@ -1,8 +1,7 @@
-import unittest
 from django.test import TestCase, Client
 from django.contrib.auth.models import User
+
 from notes.models import Note
-from django.urls import reverse
 
 
 class BaseTestCase(TestCase):
@@ -26,4 +25,11 @@ class BaseTestCase(TestCase):
         cls.auth_client = Client()
         cls.auth_client.force_login(cls.author)
         cls.form_data = {'title': 'Новая Заметка', 'text': cls.NOTE_TEXT}
-        cls.new_form_data = {'title': 'Новая Заметка', 'text': cls.NEW_NOTE_TEXT, 'slug': cls.slug}
+        cls.new_form_data = {'title': 'Новая Заметка',
+                             'text': cls.NEW_NOTE_TEXT, 'slug': cls.slug}
+        cls.note_by_author = Note.objects.create(
+            title='Заметка автора', text='Текст заметки', author=cls.author
+        )
+        cls.note_by_reader = Note.objects.create(
+            title='Заметка читателя', text='Текст заметки', author=cls.reader
+        )

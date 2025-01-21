@@ -1,14 +1,14 @@
-import unittest
 from http import HTTPStatus
+
 from django.contrib.auth import get_user_model
-from django.test import Client, TestCase
-from django.urls import reverse
 from pytils.translit import slugify
 
 from notes.models import Note
 from notes.tests.base import BaseTestCase
-from notes.tests.constants import LOGIN_URL, ADD_URL, SUCCESS_URL
+from notes.tests.constants import (
+    LOGIN_URL, ADD_URL, SUCCESS_URL, EDIT_URL, DELETE_URL)
 from notes.forms import WARNING
+
 User = get_user_model()
 
 
@@ -17,8 +17,6 @@ class TestNoteCreation(BaseTestCase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        cls.edit_url = reverse('notes:edit', args=(cls.note.slug,))
-        cls.delete_url = reverse('notes:delete', args=(cls.note.slug,))
 
     def test_anonymous_user_cant_create_note(self):
         response = self.client.post(ADD_URL, data=self.form_data)
@@ -60,7 +58,7 @@ class TestNoteCreation(BaseTestCase):
     def test_author_can_delete_note(self):
         # Получаем данные до удаления
         note_before = Note.objects.get(id=self.note.id)
-        response = self.author_client.delete(self.delete_url)
+        response = self.author_client.delete(DELETE_URL)
         self.assertRedirects(response, SUCCESS_URL)
         notes_after = list(Note.objects.values_list('id', flat=True))
         self.assertNotIn(self.note.id, notes_after)
@@ -72,7 +70,7 @@ class TestNoteCreation(BaseTestCase):
     def test_user_cant_delete_note_of_another_user(self):
         # Получаем данные до удаления
         note_before = Note.objects.get(id=self.note.id)
-        response = self.reader_client.delete(self.delete_url)
+        response = self.reader_client.delete(DELETE_URL)
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
         note_after = Note.objects.get(id=self.note.id)
         self.assertEqual(note_after.id, note_before.id)
@@ -83,7 +81,7 @@ class TestNoteCreation(BaseTestCase):
 
     def test_author_can_edit_note(self):
         response = self.author_client.post(
-            self.edit_url, data=self.new_form_data)
+            EDIT_URL, data=self.new_form_data)
         self.assertRedirects(response, SUCCESS_URL)
         note = Note.objects.get(id=self.note.id)
         self.assertEqual(note.title, self.new_form_data['title'])
@@ -93,7 +91,7 @@ class TestNoteCreation(BaseTestCase):
 
     def test_user_cant_edit_note_of_another_user(self):
         original_note = Note.objects.get(id=self.note.id)
-        response = self.reader_client.post(self.edit_url, data=self.form_data)
+        response = self.reader_client.post(EDIT_URL, data=self.form_data)
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
         note = Note.objects.get(id=self.note.id)
         self.assertEqual(note.title, original_note.title)
