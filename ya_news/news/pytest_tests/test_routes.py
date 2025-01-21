@@ -1,7 +1,9 @@
 from http import HTTPStatus
-from django.contrib.auth import get_user_model
+
 import pytest
 from pytest_lazyfixture import lazy_fixture
+from django.contrib.auth import get_user_model
+
 from yanews.settings import LOGIN_URL
 
 User = get_user_model()
