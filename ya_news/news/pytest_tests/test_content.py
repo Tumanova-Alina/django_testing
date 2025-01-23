@@ -36,11 +36,11 @@ def test_comments_order(client, news, detail_url):
 
 
 def test_form_visibility_for_author(author_client,
-                                    create_test_data, detail_url):
+                                    test_data, detail_url):
     response = author_client.get(detail_url)
     assert isinstance(response.context.get('form'), CommentForm)
 
 
-def test_form_visibility_for_anonymous(client, create_test_data, detail_url):
+def test_form_visibility_for_anonymous(client, test_data, detail_url):
     response = client.get(detail_url)
-    assert response.context.get('form') is None
+    assert 'form' not in response.context

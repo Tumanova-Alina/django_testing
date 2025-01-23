@@ -14,39 +14,42 @@ EDIT_URL = lazy_fixture('edit_url')
 DELETE_URL = lazy_fixture('delete_url')
 LOGOUT_URL = lazy_fixture('logout_url')
 SIGNUP_URL = lazy_fixture('signup_url')
+IF_LOGIN_EDIT_URL = lazy_fixture('if_login_edit_url')
+IF_LOGIN_DELETE_URL = lazy_fixture('if_login_delete_url')
+CLIENT = lazy_fixture('client')
+AUTHOR_CLIENT = lazy_fixture('author_client')
+NOT_AUTHOR_CLIENT = lazy_fixture('not_author_client')
 
 
 @pytest.mark.parametrize(
-    'url, client_fixture, expected_status',
+    'url, parametrized_client, expected_status',
     [
-        (HOME_URL, 'client', HTTPStatus.OK),
-        (DETAIL_URL, 'client', HTTPStatus.OK),
-        (LOGIN_URL, 'client', HTTPStatus.OK),
-        (LOGOUT_URL, 'client', HTTPStatus.OK),
-        (SIGNUP_URL, 'client', HTTPStatus.OK),
-        (EDIT_URL, 'not_author_client', HTTPStatus.NOT_FOUND),
-        (EDIT_URL, 'author_client', HTTPStatus.OK),
-        (DELETE_URL, 'not_author_client', HTTPStatus.NOT_FOUND),
-        (DELETE_URL, 'author_client', HTTPStatus.OK),
+        (HOME_URL, CLIENT, HTTPStatus.OK),
+        (DETAIL_URL, CLIENT, HTTPStatus.OK),
+        (LOGIN_URL, CLIENT, HTTPStatus.OK),
+        (LOGOUT_URL, CLIENT, HTTPStatus.OK),
+        (SIGNUP_URL, CLIENT, HTTPStatus.OK),
+        (EDIT_URL, NOT_AUTHOR_CLIENT, HTTPStatus.NOT_FOUND),
+        (EDIT_URL, AUTHOR_CLIENT, HTTPStatus.OK),
+        (EDIT_URL, CLIENT, HTTPStatus.FOUND),
+        (DELETE_URL, NOT_AUTHOR_CLIENT, HTTPStatus.NOT_FOUND),
+        (DELETE_URL, AUTHOR_CLIENT, HTTPStatus.OK),
+        (DELETE_URL, CLIENT, HTTPStatus.FOUND),
     ]
 )
-def test_response_status_codes(url, client_fixture,
-                               expected_status, request, client):
-    client = request.getfixturevalue(client_fixture)
-    response = client.get(url)
+def test_response_status_codes(url, parametrized_client,
+                               expected_status):
+    response = parametrized_client.get(url)
     assert response.status_code == expected_status
 
 
 @pytest.mark.parametrize(
-    'url_fixture',
+    'url, expected_url',
     [
-        EDIT_URL,
-        DELETE_URL,
+        (EDIT_URL, IF_LOGIN_EDIT_URL),
+        (DELETE_URL, IF_LOGIN_DELETE_URL)
     ]
 )
-def test_redirects(client, url_fixture, request):
-    url = url_fixture
-    expected_url = f"{LOGIN_URL}?next={url}"
+def test_redirects(client, url, expected_url):
     response = client.get(url)
-    assert response.status_code == HTTPStatus.FOUND
     assert response.url == expected_url

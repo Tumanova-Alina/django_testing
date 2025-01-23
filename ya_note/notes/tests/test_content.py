@@ -4,46 +4,43 @@ from django.contrib.auth import get_user_model
 
 from notes.forms import NoteForm
 from notes.tests.base import BaseTestCase
-from notes.tests.constants import LIST_URL, ADD_URL, LOGIN_URL, EDIT_URL
 
 User = get_user_model()
 
 
 class TestPages(BaseTestCase):
 
-    @classmethod
-    def setUpTestData(cls):
-        super().setUpTestData()
-
     def test_list_page_shows_notes(self):
-        response = self.author_client.get(LIST_URL)
-        self.assertEqual(response.status_code, HTTPStatus.OK)
+        response = self.author_client.get(self.LIST_URL)
         self.assertIn('object_list', response.context)
         self.assertIn(self.note_by_author, response.context['object_list'])
-        self.assertContains(response, self.note_by_author.title)
+        note_in_context = response.context['object_list'].get(
+            pk=self.note_by_author.pk)
+        self.assertEqual(self.note_by_author.title, note_in_context.title)
+        self.assertEqual(self.note_by_author.text, note_in_context.text)
+        self.assertEqual(self.note_by_author.author, note_in_context.author)
+        self.assertEqual(self.note_by_author.slug, note_in_context.slug)
 
     def test_notes_list_for_author(self):
-        response = self.author_client.get(LIST_URL)
-        self.assertEqual(response.status_code, HTTPStatus.OK)
+        response = self.author_client.get(self.LIST_URL)
         self.assertNotIn(self.note_by_reader, response.context['object_list'])
 
-    def test_pages_have_form(self):
-        urls_with_expected_status = [
-            (ADD_URL, HTTPStatus.FOUND),
-            (EDIT_URL, HTTPStatus.FOUND)
-        ]
+    def test_anonymous_user_has_no_form(self):
+        urls = [self.ADD_URL, self.EDIT_URL]
 
-        for url, expected_status in urls_with_expected_status:
-            # Тест для анонимного пользователя
-            response_anonymous = self.client.get(url)
-            self.assertEqual(response_anonymous.status_code, expected_status)
-            self.assertRedirects(response_anonymous, f'{LOGIN_URL}?next={url}')
-            self.assertIsNone(response_anonymous.context)
+        for url in urls:
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, HTTPStatus.FOUND)
+                self.assertRedirects(response, f'{self.LOGIN_URL}?next={url}')
+                self.assertIsNone(response.context)
 
-        for url, _ in urls_with_expected_status:
-            # Повторяем тест для авторизованного пользователя
-            response_authenticated = self.author_client.get(url)
-            self.assertEqual(response_authenticated.status_code, HTTPStatus.OK)
-            self.assertIn('form', response_authenticated.context)
-            self.assertIsInstance(
-                response_authenticated.context['form'], NoteForm)
+    def test_authenticated_user_has_form(self):
+        urls = [self.ADD_URL, self.EDIT_URL]
+
+        for url in urls:
+            with self.subTest(url=url):
+                response = self.author_client.get(url)
+                self.assertEqual(response.status_code, HTTPStatus.OK)
+                self.assertIn('form', response.context)
+                self.assertIsInstance(response.context['form'], NoteForm)

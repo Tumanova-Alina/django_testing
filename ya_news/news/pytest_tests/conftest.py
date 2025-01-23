@@ -33,7 +33,7 @@ def authorized_user(db, django_user_model):
 
 
 @pytest.fixture
-def author_client(db, client, author):  # Вызываем фикстуру автора.
+def author_client(db, author):  # Вызываем фикстуру автора.
     # Создаём новый экземпляр клиента, чтобы не менять глобальный.
     client = Client()
     client.force_login(author)  # Логиним автора в клиенте.
@@ -41,7 +41,7 @@ def author_client(db, client, author):  # Вызываем фикстуру ав
 
 
 @pytest.fixture
-def not_author_client(db, client, not_author):
+def not_author_client(db, not_author):
     client = Client()
     client.force_login(not_author)  # Логиним обычного пользователя в клиенте.
     return client
@@ -83,7 +83,7 @@ def home_url(db):
 
 
 @pytest.fixture
-def create_test_data(db, news, author, detail_url):
+def test_data(db, news, author):
     now = timezone.now()
     for index in range(10):
         comment = Comment.objects.create(
@@ -91,7 +91,6 @@ def create_test_data(db, news, author, detail_url):
         )
         comment.created = now + timedelta(days=index)
         comment.save()
-    return news, detail_url, author
 
 
 @pytest.fixture
@@ -129,3 +128,18 @@ def edit_url(comment):
 @pytest.fixture
 def delete_url(comment):
     return reverse('news:delete', args=(comment.id,))
+
+
+@pytest.fixture
+def comments_url(db, detail_url):
+    return f'{detail_url}#comments'
+
+
+@pytest.fixture
+def if_login_edit_url(login_url, edit_url):
+    return f"{login_url}?next={edit_url}"
+
+
+@pytest.fixture
+def if_login_delete_url(login_url, delete_url):
+    return f"{login_url}?next={delete_url}"
