@@ -14,8 +14,8 @@ EDIT_URL = lazy_fixture('edit_url')
 DELETE_URL = lazy_fixture('delete_url')
 LOGOUT_URL = lazy_fixture('logout_url')
 SIGNUP_URL = lazy_fixture('signup_url')
-IF_LOGIN_EDIT_URL = lazy_fixture('if_login_edit_url')
-IF_LOGIN_DELETE_URL = lazy_fixture('if_login_delete_url')
+LOGIN_EDIT_URL = lazy_fixture('login_edit_url')
+LOGIN_DELETE_URL = lazy_fixture('login_delete_url')
 CLIENT = lazy_fixture('client')
 AUTHOR_CLIENT = lazy_fixture('author_client')
 NOT_AUTHOR_CLIENT = lazy_fixture('not_author_client')
@@ -46,8 +46,8 @@ def test_response_status_codes(url, parametrized_client,
 @pytest.mark.parametrize(
     'url, expected_url',
     [
-        (EDIT_URL, IF_LOGIN_EDIT_URL),
-        (DELETE_URL, IF_LOGIN_DELETE_URL)
+        (EDIT_URL, LOGIN_EDIT_URL),
+        (DELETE_URL, LOGIN_DELETE_URL)
     ]
 )
 def test_redirects(client, url, expected_url):

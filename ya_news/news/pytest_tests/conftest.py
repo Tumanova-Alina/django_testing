@@ -83,7 +83,7 @@ def home_url(db):
 
 
 @pytest.fixture
-def test_data(db, news, author):
+def comments_for_news(db, news, author):
     now = timezone.now()
     for index in range(10):
         comment = Comment.objects.create(
@@ -136,10 +136,10 @@ def comments_url(db, detail_url):
 
 
 @pytest.fixture
-def if_login_edit_url(login_url, edit_url):
+def login_edit_url(login_url, edit_url):
     return f"{login_url}?next={edit_url}"
 
 
 @pytest.fixture
-def if_login_delete_url(login_url, delete_url):
+def login_delete_url(login_url, delete_url):
     return f"{login_url}?next={delete_url}"

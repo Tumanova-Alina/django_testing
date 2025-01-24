@@ -35,12 +35,12 @@ def test_comments_order(client, news, detail_url):
     assert all_timestamps == sorted_timestamps
 
 
-def test_form_visibility_for_author(author_client,
-                                    test_data, detail_url):
+def test_author_has_comment_form(author_client,
+                                 comments_for_news, detail_url):
     response = author_client.get(detail_url)
     assert isinstance(response.context.get('form'), CommentForm)
 
 
-def test_form_visibility_for_anonymous(client, test_data, detail_url):
+def test_anonymous_has_no_comment_form(client, comments_for_news, detail_url):
     response = client.get(detail_url)
     assert 'form' not in response.context

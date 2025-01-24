@@ -45,9 +45,11 @@ def test_user_cant_use_bad_words(detail_url, authorized_client):
 
 
 def test_author_can_delete_comment(author_client, comment, delete_url):
+    comments_before = Comment.objects.count()
     response = author_client.delete(delete_url)
     assert response.status_code == HTTPStatus.FOUND
     assert not Comment.objects.filter(id=comment.id).exists()
+    assert Comment.objects.count() == comments_before - 1
 
 
 def test_not_author_cant_delete_comment(
@@ -62,23 +64,18 @@ def test_not_author_cant_delete_comment(
 
 
 def test_author_can_edit_comment(author_client, comment, edit_url):
-    original_news = comment.news
-    original_author = comment.author
     response = author_client.post(edit_url, data=NEW_FORM_DATA)
     assert response.status_code == HTTPStatus.FOUND
-    comment = Comment.objects.get(id=comment.id)
-    assert comment.text == NEW_FORM_DATA['text']
-    assert comment.news == original_news
-    assert comment.author == original_author
+    comment_edited = Comment.objects.get(id=comment.id)
+    assert comment_edited.text == NEW_FORM_DATA['text']
+    assert comment_edited.news == comment.news
+    assert comment_edited.author == comment.author
 
 
 def test_not_author_cant_edit_comment(not_author_client, comment, edit_url):
-    original_text = comment.text
-    original_news = comment.news
-    original_author = comment.author
     response = not_author_client.post(edit_url, data=NEW_FORM_DATA)
     assert response.status_code == HTTPStatus.NOT_FOUND
-    comment = Comment.objects.get(id=comment.id)
-    assert comment.text == original_text
-    assert comment.news == original_news
-    assert comment.author == original_author
+    comment_edited = Comment.objects.get(id=comment.id)
+    assert comment_edited.text == comment.text
+    assert comment_edited.news == comment.news
+    assert comment_edited.author == comment.author
