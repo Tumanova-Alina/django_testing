@@ -21,7 +21,7 @@ class TestNoteCreation(BaseTestCase):
         note_exists = Note.objects.exists()
         self.assertFalse(note_exists)
 
-    def create_note_and_check(self, expected_slug=None):
+    def create_note_and_check(self, slug):
         Note.objects.all().delete()
         response = self.author_client.post(ADD_URL, data=self.form_data)
         self.assertRedirects(response, SUCCESS_URL)
@@ -31,18 +31,15 @@ class TestNoteCreation(BaseTestCase):
         self.assertEqual(note.title, self.form_data['title'])
         self.assertEqual(note.text, self.form_data['text'])
         self.assertEqual(note.author, self.author)
-        if expected_slug:
-            self.assertEqual(note.slug, expected_slug)
-        else:
-            self.assertEqual(note.slug, self.form_data['slug'])
+        self.assertEqual(note.slug, slug)
 
     def test_slug_auto_generation(self):
         self.form_data.pop('slug')
         expected_slug = slugify(self.form_data['title'])
-        self.create_note_and_check(expected_slug=expected_slug)
+        self.create_note_and_check(slug=expected_slug)
 
     def test_user_can_create_note(self):
-        self.create_note_and_check()
+        self.create_note_and_check(slug=self.form_data['slug'])
 
     def test_no_duplicate_slug(self):
         self.form_data['slug'] = self.note.slug
@@ -52,7 +49,7 @@ class TestNoteCreation(BaseTestCase):
         self.assertFormError(
             response, 'form', 'slug', self.note.slug + WARNING)
         notes_after = set(Note.objects.values_list('id', flat=True))
-        self.assertSetEqual(notes_before, notes_after)
+        self.assertEqual(notes_before, notes_after)
 
     def test_author_can_delete_note(self):
         # Получаем данные до удаления
